@@ -135,6 +135,7 @@ import "~/assets/css/reset.css";
 import "~/assets/css/theme.css";
 import "~/assets/css/global.css";
 import "~/assets/css/web.css";
+import loginApi from '@/api/login'
 
 import cookie from 'js-cookie'
 
@@ -153,14 +154,38 @@ export default {
       }
     },
     created() {
+
+      this.token = this.$route.query.token
+      if (this.token) {
+        this.wxLogin()
+      }
+
       this.showUserInfo()
     },
     methods: {
-      showUserInfo () {
+      wxLogin() {
+        cookie.set('guli_token', this.token, {domain: 'localhost'})
+        loginApi.getMemberInfo().then((response) => {
+          
+          this.loginInfo = response.data.data.member
+          // 获取返回用户信息，放到cookie里面
+            cookie.set('guli_ucenter', JSON.stringify(this.loginInfo), {domain: 'localhost'})
+        })
+      },
+      logout() {
+        console.log("logon out")
+        cookie.set('guli_token', '', {domain: 'localhost'})
+        cookie.set('guli_ucenter', '', {domain: 'localhost'})
+
+        this.loginInfo = {}
+        //跳转页面
+          this.$router.push({path:'/'})
+      },
+      showUserInfo() {
         //从cookie获取用户信息
         var userStr = cookie.get('guli_ucenter')
         // 把字符串转换json对象(js对象)
-        if(userStr) {
+        if (userStr) {
           this.loginInfo = JSON.parse(userStr)
         }
       }
