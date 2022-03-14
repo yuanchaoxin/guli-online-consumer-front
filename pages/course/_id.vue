@@ -107,7 +107,7 @@
                             </a>
                             <ol class="lh-menu-ol" style="display: block;">
                               <li class="lh-menu-second ml30" v-for="video in chapter.children" :key="video.id">
-                                <a href="#" title>
+                                <a :href="'/player/' + video.videoSourceId" target="_blank">
                                   <span class="fr">
                                     <i class="free-icon vam mr10">免费试听</i>
                                   </span>
@@ -124,6 +124,68 @@
                 </div>
                 <!-- /课程大纲 -->
               </article>
+
+          <div>
+              <h6 class="c-i-content c-infor-title">
+                <span>课程评价</span>
+              </h6>
+              <section class="mt20">
+                <div class="lh-menu-wrap">
+                  <menu id="lh-menu" class="lh-menu mt10 mr10">
+                    <el-input
+                      placeholder="请输入内容，按回车键或点击评论按钮进行评论"
+                      v-model="content"
+                      @keyup.enter.native="addComment"
+                      clearable>                              
+                    </el-input>
+                    <el-button type="primary" plain @click="addComment">评论</el-button>  
+                    
+                  </menu>
+                </div>
+              </section>
+              <section class="mt20">
+                <div class="lh-menu-wrap">
+                  <menu id="lh-menu" class="lh-menu mt10 mr10">
+                    <el-table
+                      :data="tableData"
+                      border
+                      style="width: 100%"
+                      :default-sort = "{prop: 'gmtCreate', order: 'descending'}"
+                      >
+                      <el-table-column
+                        prop="nickname"
+                        label="会员昵称"
+                        sortable
+                        width="180">
+                      </el-table-column>
+                      <el-table-column
+                        prop="gmtCreate"
+                        label="创建时间"
+                        sortable
+                        width="180">
+                      </el-table-column>
+                      
+                      <el-table-column
+                        prop="content"
+                        label="评论内容">
+                      </el-table-column>
+                    </el-table>
+
+                    <!-- 分页 -->
+                    <el-pagination
+                      :current-page="page"
+                      :page-size="size"
+                      :total="total"
+                      style="padding: 30px 0; text-align: center;"
+                      layout="total, prev, pager, next, jumper"
+                      @current-change="getCommentList"
+                    />
+                  </menu>
+                </div>
+              </section>
+          </div>
+          
+
             </div>
           </section>
         </article>
@@ -162,15 +224,78 @@
 
 <script>
 import courseApi from '@/api/course'
+import commentApi from '@/api/comment'
+import cookie from 'js-cookie'
 export default {
   asyncData({params, err}) {
       return courseApi.getFrontCourseInfo(params.id)
       .then(response => {
         return {
           courseWebVo : response.data.data.courseWebVo,
-          chapterVoList : response.data.data.chapterVoList
+          chapterVoList : response.data.data.chapterVoList,
+          courseId: params.id
         }
       })
-  }
+  },
+  data() {
+      return {
+        content: '',
+        page: 1,
+        size: 10,
+        total: 0,
+        tableData: [],
+        token: '',
+        commentData: {
+          content: '',
+          courseId: '',
+          teacherId: ''
+        }
+      }
+    },
+    created() {
+      this.getCommentList()
+    },
+    methods: {
+      
+      getCommentList() {
+        commentApi.getCommentList(this.page, this.size, this.courseId)
+        .then(response => {
+          console.log(response)
+          this.tableData = response.data.data.rows
+          this.total = response.data.data.total
+          this.content = ''
+        })
+      },
+      addComment() {
+        var userToken = cookie.get('guli_token')
+        console.log("userToken" + userToken)
+        if (!userToken) {
+          this.$confirm('此操作需要登录后才能操作, 是否前往登录?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+          }).then(() => {
+              //跳转页面
+              this.$router.push({path:'/login'})
+          })
+        } else {
+          this.commentData.content = this.content
+          this.commentData.courseId = this.courseId
+          this.commentData.teacherId = this.courseWebVo.teacherId
+
+          cookie.set('guli_token', userToken,{domain: 'localhost'})
+          commentApi.addComment(this.commentData).then(response => {
+            this.$message({
+              type: 'success',
+              message: '添加评论成功!'
+            })
+
+            this.page = 1
+            this.getCommentList()
+          })
+
+        }
+      }
+    }
 };
 </script>
