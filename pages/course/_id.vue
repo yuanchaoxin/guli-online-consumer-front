@@ -12,7 +12,7 @@
       <div>
         <article class="c-v-pic-wrap" style="height: 357px;">
           <section class="p-h-video-box" id="videoPlay">
-            <img :src="courseWebVo.cover" :alt="courseWebVo.title" class="dis c-v-pic">
+            <img height="357px" :src="courseWebVo.cover" :alt="courseWebVo.title" class="dis c-v-pic">
           </section>
         </article>
         <aside class="c-attr-wrap">
@@ -27,19 +27,22 @@
             <section class="c-attr-mt c-attr-undis">
               <span class="c-fff fsize14">主讲： {{courseWebVo.teacherName}}&nbsp;&nbsp;&nbsp;</span>
             </section>
-            <section class="c-attr-mt of">
-              <span class="ml10 vam">
-                <em class="icon18 scIcon"></em>
-                <a class="c-fff vam" title="收藏" href="#" >收藏</a>
-              </span>
-            </section>
-            <section class="c-attr-mt">
+
+            <section class="c-attr-mt" v-if="isBuy || Number(courseWebVo.price)  === 0">
               <a href="#" title="立即观看" class="comm-btn c-btn-3">立即观看</a>
             </section>
+
+            <section class="c-attr-mt of" v-else>
+              <span class="ml10 vam">
+                <em class="icon18 scIcon"></em>
+                <a @click="createOrders()" href="#" title="立即购买" class="comm-btn c-btn-3">立即购买</a>
+              </span>
+            </section>
+            
           </section>
         </aside>
         <aside class="thr-attr-box">
-          <ol class="thr-attr-ol clearfix">
+          <ol class="thr-attr-ol">
             <li>
               <p>&nbsp;</p>
               <aside>
@@ -221,21 +224,17 @@
     <!-- /课程详情 结束 -->
   </div>
 </template>
-
 <script>
+import orderApi from '@/api/order'
 import courseApi from '@/api/course'
 import commentApi from '@/api/comment'
 import cookie from 'js-cookie'
+
 export default {
   asyncData({params, err}) {
-      return courseApi.getFrontCourseInfo(params.id)
-      .then(response => {
-        return {
-          courseWebVo : response.data.data.courseWebVo,
-          chapterVoList : response.data.data.chapterVoList,
-          courseId: params.id
-        }
-      })
+    return {
+      courseId: params.id
+    }
   },
   data() {
       return {
@@ -249,14 +248,26 @@ export default {
           content: '',
           courseId: '',
           teacherId: ''
-        }
+        },
+        chapterVoList: [],
+        courseWebVo: {},
+        isBuy: false
       }
     },
     created() {
       this.getCommentList()
+      this.initCourseInfo()
     },
     methods: {
-      
+      initCourseInfo() {
+         courseApi.getFrontCourseInfo(this.courseId)
+          .then(response => {
+            this.courseWebVo = response.data.data.courseWebVo
+            this.chapterVoList = response.data.data.chapterVoList
+            this.isBuy = response.data.data.isBuy 
+            console.log("................" + this.isBuy)      
+        }) 
+      },
       getCommentList() {
         commentApi.getCommentList(this.page, this.size, this.courseId)
         .then(response => {
@@ -295,6 +306,14 @@ export default {
           })
 
         }
+      },
+      createOrders() {
+        orderApi.createOrder(this.courseId)
+        .then(response => {
+          //获取返回订单号
+          //生成订单之后，跳转订单显示页面
+          this.$router.push({path:'/order/'+response.data.data.orderNo})
+        })
       }
     }
 };
